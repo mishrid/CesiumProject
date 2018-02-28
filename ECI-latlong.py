@@ -23,7 +23,8 @@ def eci2lla(x, y, z, yyyy, mm, dd, h, m, s):
     tt = Time(datetime.datetime(yyyy, mm, dd, h, m, s), scale='utc')
 
     # Read the coordinates in the Geocentric Celestial Reference System
-    gcrs = GCRS(CartesianRepresentation(x=x * u.m, y=y * u.m, z=z * u.m), obstime=tt)
+
+    gcrs = GCRS(CartesianRepresentation(x=x * u.km, y=y * u.km, z=z * u.km), obstime=tt)
 
     # Convert it to an Earth-fixed frame
     itrs = gcrs.transform_to(ITRS(obstime=tt))
@@ -33,7 +34,7 @@ def eci2lla(x, y, z, yyyy, mm, dd, h, m, s):
     # conversion to geodetic
     lon, lat, alt = el.to_geodetic()
 
-    return lon, lat, alt
+    return lat, lon, alt * 1000
 
 
 def convert_time_to_string(year_date, time):
@@ -92,14 +93,12 @@ def convert_time_and_position(lst):
     longitude = tuple1[0].value
     latitude = tuple1[1].value
     altitude = abs(tuple1[2].value)
-    # sketchy that this returns something negative!
-    return time_string + ", " + str(latitude) + ", " + str(longitude) + ", " + str(altitude)
+    return ('"%s"' % time_string) + ", " + str(latitude) + ", " + str(longitude) + ", " + str(altitude)
 
 
 def czml_writer():
-    # opens file with 10 years worth of data
     f = open("ICON_EPHPRE120_18037_000000_28034_235800.txt", "r")
-    start_file = '[{"version": "1.0", "id": "document"}, {"label": {"text": "ICON", "pixelOffset": {"cartesian2": [0.0, 16.0]}, "scale": 0.5, "show": true}, "path": {"show": true, "material": {"solidColor": {"color": {"rgba": [255, 165, 0, 1]}}}, "width": 2, "trailTime": 0, "resolution": 120, "leadTime": 0, "trailTime": 10000}, "model": {"gltf" : "../../SampleData/models/CesiumAir/Cesium_Air.glb", "scale" : 2.0, "minimumPixelSize": 64, "show": true}, "position": {"interpolationDegree": 5, "referenceFrame": "INTERTIAL", "cartographicDegrees": '
+    start_file = '[{"version": "1.0", "id": "document"}, {"label": {"text": "ICON", "pixelOffset": {"cartesian2": [0.0, 16.0]}, "scale": 0.5, "show": true}, "path": {"show": true, "material": {"solidColor": {"color": {"rgba": [255, 0, 255, 125]}}}, "width": 2, "trailTime": 0, "resolution": 120, "leadTime": 0, "trailTime": 10000}, "model": {"gltf" : "../../SampleData/models/CesiumAir/Cesium_Air.glb", "scale" : 2.0, "minimumPixelSize": 64, "show": true}, "position": {"interpolationDegree": 5, "referenceFrame": "INTERTIAL", "cartographicDegrees":'
     end_file = ', "interpolationAlgorithm": "LAGRANGE"}, "id": "ICON"}]'
     lines = f.readlines()
     lines = lines[1:]
@@ -118,23 +117,21 @@ def czml_writer():
     while ((all_data[count][0][5:] == date or ('0' + str(int(all_data[count][0][5:]) - 1)) == date)
            and count < len(all_data)):
         if ('0' + str(int(all_data[count][0][5:]) - 1) == date):
-            file_complete = start_file + str(all_converted_data) + end_file
-            f = open(string_position[0:10]+".txt", "w+")
+            file_complete = start_file + str(all_converted_data).replace("'",'') + end_file
+            potential_name = all_data[count - 1][0].replace("/","_")
+            f = open(potential_name+".czml", "w+")
             f.write(file_complete);
             f.close();
-            print('Data for: ' + string_position[0:10] + ' written to file ' + string_position[0:10] + ".czml")
+            print('Data for: ' + string_position[1:11] + ' written to file ' + string_position[1:11] + ".czml")
             date = all_data[count][0][5:]
             all_converted_data = []
             string_position = convert_time_and_position(all_data[count])
             all_converted_data += [string_position]
             count = count + 1
         else:
-            #print((str(int(all_data[count][0][5:]) - 1)))
-            #print(count)
             string_position = convert_time_and_position(all_data[count])
             all_converted_data += [string_position]
             count = count + 1
-
 
 
 czml_writer()
